@@ -5,8 +5,9 @@ import dotenv from 'dotenv' ;
 import { initWebSocket } from './websocket.js';
 import authRoutes from './routes/auth.js' ; 
 import eventRoutes from './routes/events.js' ; 
-import { timeStamp } from 'console';
-import { createAndBroadcastEvent } from './services/eventService.js';
+import matchRoutes from './routes/matches.js' ; 
+import cricketApiRoutes from './routes/cricketApi.js' ; 
+import { ensureDatabaseSchema } from './db/index.js';
 
 //load env variables 
 dotenv.config() ; 
@@ -22,6 +23,8 @@ app.use(express.json()) ; //parsing the JSON bodies
 //routes 
 app.use('/auth' , authRoutes) ; 
 app.use('/events' , eventRoutes) ; 
+app.use('/match' , matchRoutes) ; 
+app.use('/api/cricket' , cricketApiRoutes) ; 
 
 //Health Check Endpoint 
 app.get('/health' , (req , res) => {
@@ -37,6 +40,8 @@ const server = http.createServer(app) ;
 
 //initialize websocket (attach to the same server)
 initWebSocket(server) ; 
+
+await ensureDatabaseSchema();
 
 //start server
 server.listen(PORT , () => {

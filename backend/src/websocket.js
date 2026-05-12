@@ -57,7 +57,7 @@ async function handleMessage(ws, data) {
       break;
 
     case "SUBSCRIBE":
-      handleSubscription(ws, data.subscriptions);
+      await handleSubscription(ws, data.subscriptions);
       break;
 
     case "GET_MISSED_EVENTS":
@@ -112,7 +112,7 @@ async function handleAuth(ws, token) {
 }
 
 // handle subscriptions
-function handleSubscription(ws, subscriptions) {
+async function handleSubscription(ws, subscriptions) {
   const client = clients.get(ws);
 
   if (!client.authenticated) {
@@ -126,6 +126,32 @@ function handleSubscription(ws, subscriptions) {
   }
 
   client.subscriptions = subscriptions || [];
+
+  try {
+    await pool.query('DELETE FROM user_subscriptions WHERE user_id = $1', [client.userId]);
+
+    for (const subscription of client.subscriptions) {
+      await pool.query(
+        `INSERT INTO user_subscriptions (user_id, match_id, event_type, team)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          client.userId,
+          subscription.match_id || null,
+          subscription.event_type || null,
+          subscription.team || null,
+        ]
+      );
+    }
+  } catch (err) {
+    console.error("Error saving subscriptions:", err);
+    ws.send(
+      JSON.stringify({
+        type: "ERROR",
+        message: "Could not save subscriptions",
+      })
+    );
+    return;
+  }
 
   ws.send(
     JSON.stringify({
